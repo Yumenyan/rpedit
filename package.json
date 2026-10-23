@@ -1,0 +1,1 @@
+{"name":"railcraft-studio","version":"1.0.0","type":"module","private":true,"scripts":{"dev":"vite --host 127.0.0.1","build":"vite build","test":"node --test tests/*.test.js","preview":"vite preview --host 127.0.0.1"},"dependencies":{"acorn":"8.14.0","fflate":"0.8.2","lucide":"0.468.0","three":"0.170.0"},"devDependencies":{"vite":"^6.4.5"}}
