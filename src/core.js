@@ -5,6 +5,14 @@ export const DOORS=['NONE','LEFT_POSITIVE','RIGHT_POSITIVE','LEFT_NEGATIVE','RIG
 export const CONDITIONS=['ALL','DOORS_OPEN','DOORS_CLOSED','DOOR_LEFT_OPEN','DOOR_RIGHT_OPEN','DOOR_LEFT_CLOSED','DOOR_RIGHT_CLOSED','MOVING_FORWARDS','MOVING_BACKWARDS'];
 export const DISPLAYS=['DESTINATION','ROUTE_NUMBER','NEXT_STATION_PLAIN','NEXT_STATION_KCR','NEXT_STATION_MTR','NEXT_STATION_UK'];
 export const clone=v=>structuredClone(v);
+export function matchesResource(file,reference){
+ if(typeof reference!=='string'||!reference.trim())return false;
+ const value=reference.trim().replaceAll('\\','/'),colon=value.indexOf(':');
+ const path=colon<0?value:value.slice(colon+1),namespace=colon<0?null:value.slice(0,colon);
+ if(!path)return false;
+ const filePath=(file.webkitRelativePath||file.name).replaceAll('\\','/');
+ return (namespace?filePath.endsWith(`assets/${namespace}/${path}`):filePath===path||filePath.endsWith('/'+path))||file.name===path.slice(path.lastIndexOf('/')+1);
+}
 export const defaultPart=name=>({name,stage:'EXTERIOR',mirror:false,skip_rendering_if_too_far:false,door_offset:'NONE',render_condition:'ALL',positions:[[0,0]],whitelisted_cars:'',blacklisted_cars:''});
 export const defaultDisplay=()=>({x_padding:0,y_padding:0,cjk_size_ratio:0,type:'DESTINATION',color_cjk:'FF9900',color:'FF9900',should_scroll:false,force_upper_case:false,force_single_line:false});
 function literal(n){

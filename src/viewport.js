@@ -9,7 +9,7 @@ export class Viewport{
  this.host=host;this.onSelect=onSelect;this.onSlotChange=onSlotChange;this.mode='parts';this.units=1;this.selected=-1;this.slotIndex=0;this.offsetIndex=0;this.quadIndex=0;this.epsilon=.002;this.snap=true;
  this.scene=new THREE.Scene();this.scene.background=new THREE.Color('#181c20');this.camera=new THREE.PerspectiveCamera(38,1,.01,2000);this.camera.position.set(19,11,21);
  this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.setClearColor('#181c20');host.append(this.renderer.domElement);
- this.controls=new OrbitControls(this.camera,this.renderer.domElement);this.controls.enableDamping=true;this.controls.target.set(0,1,0);this.controls.maxDistance=500;
+ this.controls=new OrbitControls(this.camera,this.renderer.domElement);this.controls.enableDamping=false;this.controls.zoomSpeed=2.6;this.controls.zoomToCursor=true;this.controls.target.set(0,1,0);this.controls.minDistance=.05;this.controls.maxDistance=500;
  this.scene.add(new THREE.HemisphereLight(0xcdd9ee,0x747873,2.5));const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(3,9,6);this.scene.add(light);
  this.grid=new THREE.GridHelper(60,60,0x43504c,0x2a3235);this.grid.position.y=-.04;this.scene.add(this.grid);this.axes=new THREE.AxesHelper(1.8);this.axes.position.set(0,.01,0);this.scene.add(this.axes);
  this.body=new THREE.Group();this.lcd=new THREE.Group();this.scene.add(this.body,this.lcd);this.ray=new THREE.Raycaster();
@@ -92,6 +92,22 @@ export class Viewport{
  const rotation=new THREE.Quaternion().setFromUnitVectors(normal,targetNormal);s.pos[this.quadIndex]=quad.map(p=>V(p).sub(center).applyQuaternion(rotation).add(center).toArray());
  const target=hit.point.clone();if(this.snap)target.toArray().forEach((v,i)=>target.setComponent(i,Math.round(v*1000)/1000));target.addScaledVector(targetNormal,this.epsilon);
  s.offsets[this.offsetIndex]=target.sub(center).toArray();
+ }
+ snapSlotToModel(axis='x'){
+ const s=this.config?.slots?.[this.slotIndex];if(!s||!this.body?.children?.length)return false;
+ const q=s.pos[this.quadIndex],offset=s.offsets[this.offsetIndex];
+ const center=q.reduce((v,p)=>v.add(V(p)),new THREE.Vector3()).multiplyScalar(.25).add(V(offset));
+ const size=new THREE.Box3().setFromObject(this.body).getSize(new THREE.Vector3()).length();
+ const component=axis==='x'?0:axis==='y'?1:2,reach=Math.max(size*2,4),directions=[1,-1].map(sign=>new THREE.Vector3().setComponent(component,sign));
+ const hit=directions.flatMap(direction=>{this.ray.set(center,direction);this.ray.far=reach;return this.ray.intersectObjects(this.body.children,true);}).filter(item=>item.object.isMesh&&item.face).sort((a,b)=>a.distance-b.distance)[0];
+ if(!hit)return false;
+ const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+ const quadNormal=new THREE.Vector3().subVectors(V(q[1]),V(q[0])).cross(new THREE.Vector3().subVectors(V(q[2]),V(q[0]))).normalize();
+ const rotation=new THREE.Quaternion().setFromUnitVectors(quadNormal,normal);
+ const quadCenter=q.reduce((v,p)=>v.add(V(p)),new THREE.Vector3()).multiplyScalar(.25);
+ s.pos[this.quadIndex]=q.map(p=>V(p).sub(quadCenter).applyQuaternion(rotation).add(quadCenter).toArray());
+ const placedCenter=hit.point.addScaledVector(normal,this.epsilon);
+ s.offsets[this.offsetIndex]=placedCenter.sub(quadCenter).toArray();return true;
  }
  focusSelection(lcd=false){const targets=lcd?this.lcd.children.filter(o=>o.isMesh&&o.userData.slot===this.slotIndex&&o.userData.offset===this.offsetIndex&&o.userData.quad===this.quadIndex):this.body.children.filter(o=>o.userData.part===this.selected);const b=new THREE.Box3();for(const o of targets)b.expandByObject(o);if(b.isEmpty())return this.fit();const center=b.getCenter(new THREE.Vector3()),size=Math.max(b.getSize(new THREE.Vector3()).length(),.1),direction=this.camera.position.clone().sub(this.controls.target).normalize();this.controls.target.copy(center);this.camera.position.copy(center).addScaledVector(direction,size*1.8);this.controls.update();}
  fit(){const b=new THREE.Box3().setFromObject(this.body);if(b.isEmpty())return;const center=b.getCenter(new THREE.Vector3()),size=b.getSize(new THREE.Vector3()).length();this.controls.target.copy(center);this.camera.position.copy(center).add(new THREE.Vector3(1,.48,1).normalize().multiplyScalar(size*1.5));this.camera.near=Math.max(.001,size/10000);this.camera.far=Math.max(1000,size*100);this.camera.updateProjectionMatrix();this.controls.update();}

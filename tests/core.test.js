@@ -2,9 +2,20 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {unzipSync,strFromU8} from 'fflate';
+import {matchesResource} from '../src/core.js';
+test('model + PNG without a registry: optional texture references and bare paths do not throw',()=>{
+ const file={name:'train.png',webkitRelativePath:''};
+ for(const reference of [undefined,null,'',42,{},'mtr:'])assert.equal(matchesResource(file,reference),false);
+ assert.equal(matchesResource(file,'undefined.png'),false);
+ assert.equal(matchesResource(file,'train.png'),true);
+ assert.equal(matchesResource(file,'mtr:train/train.png'),true);
+ assert.equal(matchesResource(file,'train/train.png'),true);
+ assert.equal(matchesResource({name:'other.png',webkitRelativePath:'pack/assets/mtr/train/train.png'},'mtr:train/train.png'),true);
+ assert.equal(matchesResource(file,'mtr:train/other.png'),false);
+});
 import {extractSlotCfg,patchScript,defaultPart,partVisible,filterStrength,normalizeProperties,exportFiles,makeZip,dateName,dependencyReport,mtrModel} from '../src/core.js';
-const script=readFileSync('public/examples/init_153.js','utf8');
-const properties=JSON.parse(readFileSync('public/examples/properties.json','utf8'));
+const script=readFileSync('tests/fixtures/init_153.js','utf8');
+const properties=JSON.parse(readFileSync('tests/fixtures/properties.json','utf8'));
 test('real script: all slots parsed and only initializer replaced',()=>{
  const original=extractSlotCfg(script);assert.equal(original.config.slots.length,10);assert.equal(original.config.slots[2].offsets.length,2);
  original.config.slots[0].offsets[0][0]=1.234;const patched=patchScript(script,original.config),after=extractSlotCfg(patched);
